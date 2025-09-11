@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Game</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
+        h1 { margin-top: 20px; }
+        #chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 0;
+            border: 4px solid #333;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 50px; height: 50px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; cursor: pointer;
+        }
+        .white { background: #f0d9b5; }
+        .black { background: #b58863; }
+        .selected { outline: 3px solid #2196f3; }
+    </style>
+</head>
+<body>
+    <h1>체스 게임</h1>
+    <div id="chessboard"></div>
+    <script>
+        // 유니코드 체스 말
+        const PIECES = {
+            wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
+            bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟'
+        };
+        // 초기 체스판
+        let board = [
+            ['bR','bN','bB','bQ','bK','bB','bN','bR'],
+            ['bP','bP','bP','bP','bP','bP','bP','bP'],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            [null,null,null,null,null,null,null,null],
+            ['wP','wP','wP','wP','wP','wP','wP','wP'],
+            ['wR','wN','wB','wQ','wK','wB','wN','wR']
+        ];
+        let selected = null;
+        let turn = 'w'; // w: white, b: black
+
+        function renderBoard() {
+            const boardDiv = document.getElementById('chessboard');
+            boardDiv.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell ' + ((r+c)%2===0 ? 'white' : 'black');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    if (selected && selected[0] === r && selected[1] === c) {
+                        cell.classList.add('selected');
+                    }
+                    const piece = board[r][c];
+                    if (piece) cell.textContent = PIECES[piece];
+                    cell.onclick = () => handleCellClick(r, c);
+                    boardDiv.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(r, c) {
+            const piece = board[r][c];
+            if (selected) {
+                // 이동 시도
+                const [sr, sc] = selected;
+                const selectedPiece = board[sr][sc];
+                if (selectedPiece && selectedPiece[0] === turn) {
+                    // 자기 말이거나 빈 칸이면 이동
+                    if (!piece || piece[0] !== turn) {
+                        board[r][c] = selectedPiece;
+                        board[sr][sc] = null;
+                        turn = turn === 'w' ? 'b' : 'w';
+                    }
+                }
+                selected = null;
+            } else {
+                // 자기 말 선택
+                if (piece && piece[0] === turn) {
+                    selected = [r, c];
+                }
+            }
+            renderBoard();
+        }
+
+        renderBoard();
+    </script>
+</body>
+</html>

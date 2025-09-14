@@ -5,15 +5,16 @@ export interface Player {
 }
 
 export interface Move {
-    from: string; // e.g., "e2"
-    to: string;   // e.g., "e4"
-    promotion?: string; // e.g., "q" for queen promotion
+    from: string; // e.g., 'e2'
+    to: string;   // e.g., 'e4'
+    promotion?: string; // e.g., 'q' for promoting to a queen
 }
 
 export interface GameState {
     board: string[][];
-    currentPlayer: 'white' | 'black';
+    currentTurn: 'white' | 'black';
     moves: Move[];
-    isGameOver: boolean;
-    winner?: 'white' | 'black' | 'draw';
+    isCheck: boolean;
+    isCheckmate: boolean;
+    isStalemate: boolean;
 }

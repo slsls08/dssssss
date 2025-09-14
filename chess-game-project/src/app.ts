@@ -1,33 +1,26 @@
 import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { setRoutes } from './routes/index';
 import { MultiplayerServer } from './multiplayer/server';
-import { StockfishAI } from './ai/stockfish';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const httpServer = createServer(app);
+const io = new Server(httpServer);
 
-// Initialize the multiplayer server
-const multiplayerServer = new MultiplayerServer();
-multiplayerServer.startServer(app);
-
-// Initialize the Stockfish AI
-const stockfishAI = new StockfishAI();
-stockfishAI.initialize();
-
-// Set up routes for multiplayer and AI functionalities
+// Middleware setup
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.post('/move', (req, res) => {
-    const { move, player } = req.body;
-    multiplayerServer.broadcastMove(move, player);
-    res.send({ status: 'Move broadcasted' });
-});
+// Set up routes
+setRoutes(app);
 
-app.post('/ai/move', async (req, res) => {
-    const bestMove = await stockfishAI.getBestMove();
-    res.send({ move: bestMove });
-});
+// Initialize multiplayer server
+const multiplayerServer = new MultiplayerServer(io);
+multiplayerServer.start();
 
 // Start the server
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });

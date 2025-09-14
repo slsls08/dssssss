@@ -1,69 +1,71 @@
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import { Game } from '../chess/rules';
-import { Player } from '../types';
+import WebSocket from 'ws';
+import { GameController } from '../controllers/gameController';
+import { GameState } from '../types';
 
 export class MultiplayerServer {
-    private app: express.Application;
-    private server: http.Server;
-    private io: Server;
-    private games: Map<string, Game>;
+    private wss: WebSocket.Server;
+    private gameController: GameController;
+    private clients: Map<WebSocket, string>;
 
-    constructor() {
-        this.app = express();
-        this.server = http.createServer(this.app);
-        this.io = new Server(this.server);
-        this.games = new Map();
-    }
+    constructor(port: number) {
+        this.wss = new WebSocket.Server({ port });
+        this.gameController = new GameController();
+        this.clients = new Map();
 
-    public startServer(port: number): void {
-        this.server.listen(port, () => {
-            console.log(`Server is running on port ${port}`);
+        this.wss.on('connection', (ws: WebSocket) => {
+            this.handleConnection(ws);
         });
 
-        this.handleConnection();
+        console.log(`Multiplayer server is running on ws://localhost:${port}`);
     }
 
-    private handleConnection(): void {
-        this.io.on('connection', (socket) => {
-            console.log('A player connected:', socket.id);
+    private handleConnection(ws: WebSocket) {
+        ws.on('message', (message: string) => {
+            this.handleMessage(ws, message);
+        });
 
-            socket.on('joinGame', (gameId: string, player: Player) => {
-                this.joinGame(gameId, player, socket);
-            });
-
-            socket.on('makeMove', (gameId: string, move: any) => {
-                this.handleMove(gameId, move, socket);
-            });
-
-            socket.on('disconnect', () => {
-                console.log('A player disconnected:', socket.id);
-            });
+        ws.on('close', () => {
+            this.handleDisconnection(ws);
         });
     }
 
-    private joinGame(gameId: string, player: Player, socket: any): void {
-        if (!this.games.has(gameId)) {
-            this.games.set(gameId, new Game());
-        }
-        const game = this.games.get(gameId);
-        game.addPlayer(player);
-        socket.join(gameId);
-        this.io.to(gameId).emit('playerJoined', player);
-    }
-
-    private handleMove(gameId: string, move: any, socket: any): void {
-        const game = this.games.get(gameId);
-        if (game.isValidMove(move)) {
-            game.makeMove(move);
-            this.broadcastMove(gameId, move);
-        } else {
-            socket.emit('invalidMove', move);
+    private handleMessage(ws: WebSocket, message: string) {
+        const data = JSON.parse(message);
+        switch (data.type) {
+            case 'join':
+                this.handleJoin(ws, data.playerName);
+                break;
+            case 'move':
+                this.handleMove(ws, data.move);
+                break;
+            // Additional message types can be handled here
         }
     }
 
-    private broadcastMove(gameId: string, move: any): void {
-        this.io.to(gameId).emit('moveMade', move);
+    private handleJoin(ws: WebSocket, playerName: string) {
+        this.clients.set(ws, playerName);
+        ws.send(JSON.stringify({ type: 'joined', playerName }));
+        this.broadcast({ type: 'playerJoined', playerName });
+    }
+
+    private handleMove(ws: WebSocket, move: string) {
+        const gameState: GameState = this.gameController.makeMove(move);
+        this.broadcast({ type: 'moveMade', move, gameState });
+    }
+
+    private handleDisconnection(ws: WebSocket) {
+        const playerName = this.clients.get(ws);
+        if (playerName) {
+            this.clients.delete(ws);
+            this.broadcast({ type: 'playerLeft', playerName });
+        }
+    }
+
+    private broadcast(data: any) {
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(data));
+            }
+        });
     }
 }

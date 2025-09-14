@@ -1,97 +1,253 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>Chess Game</title>
-    <style>
-        body { display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
-        h1 { margin-top: 20px; }
-        #chessboard {
-            display: grid;
-            grid-template-columns: repeat(8, 50px);
-            grid-template-rows: repeat(8, 50px);
-            gap: 0;
-            border: 4px solid #333;
-            margin-top: 20px;
-        }
-        .cell {
-            width: 50px; height: 50px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 32px; cursor: pointer;
-        }
-        .white { background: #f0d9b5; }
-        .black { background: #b58863; }
-        .selected { outline: 3px solid #2196f3; }
-    </style>
+  <meta charset="UTF-8">
+  <title>체스 게임</title>
+  <style>
+    body { display: flex; justify-content: center; align-items: center; height: 100vh; }
+    #chessboard {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #333;
+    }
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .white { background: #f0d9b5; }
+    .black { background: #b58863; }
+    .highlight { outline: 3px solid #00f; }
+    .selected { outline: 3px solid #f00; }
+  </style>
 </head>
 <body>
-    <h1>체스 게임</h1>
-    <div id="chessboard"></div>
-    <script>
-        // 유니코드 체스 말
-        const PIECES = {
-            wK: '♔', wQ: '♕', wR: '♖', wB: '♗', wN: '♘', wP: '♙',
-            bK: '♚', bQ: '♛', bR: '♜', bB: '♝', bN: '♞', bP: '♟'
-        };
-        // 초기 체스판
-        let board = [
-            ['bR','bN','bB','bQ','bK','bB','bN','bR'],
-            ['bP','bP','bP','bP','bP','bP','bP','bP'],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            [null,null,null,null,null,null,null,null],
-            ['wP','wP','wP','wP','wP','wP','wP','wP'],
-            ['wR','wN','wB','wQ','wK','wB','wN','wR']
-        ];
-        let selected = null;
-        let turn = 'w'; // w: white, b: black
+  <div id="chessboard"></div>
+  <button id="aiMoveBtn">AI 수 두기</button>
+  <script>
+    const pieces = {
+      r: '♜', n: '♞', b: '♝', q: '♛', k: '♚', p: '♟',
+      R: '♖', N: '♘', B: '♗', Q: '♕', K: '♔', P: '♙'
+    };
 
-        function renderBoard() {
-            const boardDiv = document.getElementById('chessboard');
-            boardDiv.innerHTML = '';
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell ' + ((r+c)%2===0 ? 'white' : 'black');
-                    cell.dataset.row = r;
-                    cell.dataset.col = c;
-                    if (selected && selected[0] === r && selected[1] === c) {
-                        cell.classList.add('selected');
-                    }
-                    const piece = board[r][c];
-                    if (piece) cell.textContent = PIECES[piece];
-                    cell.onclick = () => handleCellClick(r, c);
-                    boardDiv.appendChild(cell);
-                }
-            }
+    let board = [
+      ['r','n','b','q','k','b','n','r'],
+      ['p','p','p','p','p','p','p','p'],
+      ['','','','','','','',''],
+      ['','','','','','','',''],
+      ['','','','','','','',''],
+      ['','','','','','','',''],
+      ['P','P','P','P','P','P','P','P'],
+      ['R','N','B','Q','K','B','N','R']
+    ];
+
+    let selected = null;
+    let turn = 'w'; // 'w' 또는 'b'
+
+    function isWhite(piece) {
+      return piece && piece === piece.toUpperCase();
+    }
+    function isBlack(piece) {
+      return piece && piece === piece.toLowerCase();
+    }
+
+    function getMoves(row, col) {
+      const piece = board[row][col];
+      if (!piece) return [];
+      const moves = [];
+      const directions = {
+        N: [-2, -1, 1, 2],
+        knight: [
+          [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+          [1, -2], [1, 2], [2, -1], [2, 1]
+        ],
+        rook: [
+          [1,0], [-1,0], [0,1], [0,-1]
+        ],
+        bishop: [
+          [1,1], [1,-1], [-1,1], [-1,-1]
+        ],
+        queen: [
+          [1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]
+        ],
+        king: [
+          [1,0], [-1,0], [0,1], [0,-1], [1,1], [1,-1], [-1,1], [-1,-1]
+        ]
+      };
+      const color = isWhite(piece) ? 'w' : 'b';
+      // 폰
+      if (piece.toLowerCase() === 'p') {
+        const dir = color === 'w' ? -1 : 1;
+        // 전진
+        if (board[row+dir] && !board[row+dir][col]) {
+          moves.push([row+dir, col]);
+          // 첫 이동 2칸
+          if ((color === 'w' && row === 6) || (color === 'b' && row === 1)) {
+            if (!board[row+2*dir][col]) moves.push([row+2*dir, col]);
+          }
         }
-
-        function handleCellClick(r, c) {
-            const piece = board[r][c];
-            if (selected) {
-                // 이동 시도
-                const [sr, sc] = selected;
-                const selectedPiece = board[sr][sc];
-                if (selectedPiece && selectedPiece[0] === turn) {
-                    // 자기 말이거나 빈 칸이면 이동
-                    if (!piece || piece[0] !== turn) {
-                        board[r][c] = selectedPiece;
-                        board[sr][sc] = null;
-                        turn = turn === 'w' ? 'b' : 'w';
-                    }
-                }
-                selected = null;
+        // 잡기
+        for (let dc of [-1,1]) {
+          if (
+            board[row+dir] &&
+            board[row+dir][col+dc] &&
+            ((color === 'w' && isBlack(board[row+dir][col+dc])) ||
+             (color === 'b' && isWhite(board[row+dir][col+dc])))
+          ) {
+            moves.push([row+dir, col+dc]);
+          }
+        }
+      }
+      // 나이트
+      else if (piece.toLowerCase() === 'n') {
+        for (let [dr, dc] of directions.knight) {
+          const nr = row + dr, nc = col + dc;
+          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+            const target = board[nr][nc];
+            if (!target || (color === 'w' ? isBlack(target) : isWhite(target))) {
+              moves.push([nr, nc]);
+            }
+          }
+        }
+      }
+      // 룩, 비숍, 퀸
+      else if (piece.toLowerCase() === 'r' || piece.toLowerCase() === 'b' || piece.toLowerCase() === 'q') {
+        let dirs = [];
+        if (piece.toLowerCase() === 'r') dirs = directions.rook;
+        if (piece.toLowerCase() === 'b') dirs = directions.bishop;
+        if (piece.toLowerCase() === 'q') dirs = directions.queen;
+        for (let [dr, dc] of dirs) {
+          for (let i = 1; i < 8; i++) {
+            const nr = row + dr*i, nc = col + dc*i;
+            if (nr < 0 || nr > 7 || nc < 0 || nc > 7) break;
+            const target = board[nr][nc];
+            if (!target) {
+              moves.push([nr, nc]);
             } else {
-                // 자기 말 선택
-                if (piece && piece[0] === turn) {
-                    selected = [r, c];
-                }
+              if (color === 'w' ? isBlack(target) : isWhite(target)) {
+                moves.push([nr, nc]);
+              }
+              break;
             }
-            renderBoard();
+          }
         }
+      }
+      // 킹
+      else if (piece.toLowerCase() === 'k') {
+        for (let [dr, dc] of directions.king) {
+          const nr = row + dr, nc = col + dc;
+          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+            const target = board[nr][nc];
+            if (!target || (color === 'w' ? isBlack(target) : isWhite(target))) {
+              moves.push([nr, nc]);
+            }
+          }
+        }
+      }
+      return moves;
+    }
 
-        renderBoard();
-    </script>
+    function renderBoard(board, highlights=[], selectedPos=null) {
+      const chessboard = document.getElementById('chessboard');
+      chessboard.innerHTML = '';
+      for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+          const square = document.createElement('div');
+          square.className = 'square ' + ((row + col) % 2 === 0 ? 'white' : 'black');
+          if (highlights.some(([r,c]) => r === row && c === col)) {
+            square.classList.add('highlight');
+          }
+          if (selectedPos && selectedPos[0] === row && selectedPos[1] === col) {
+            square.classList.add('selected');
+          }
+          const piece = board[row][col];
+          if (piece) square.textContent = pieces[piece];
+          square.onclick = () => handleClick(row, col);
+          chessboard.appendChild(square);
+        }
+      }
+    }
+
+    function handleClick(row, col) {
+      const piece = board[row][col];
+      if (selected) {
+        // 이동 시도
+        const moves = getMoves(selected[0], selected[1]);
+        if (moves.some(([r,c]) => r === row && c === col)) {
+          board[row][col] = board[selected[0]][selected[1]];
+          board[selected[0]][selected[1]] = '';
+          selected = null;
+          turn = turn === 'w' ? 'b' : 'w';
+          renderBoard(board);
+          return;
+        }
+      }
+      // 자기 차례의 말만 선택
+      if (piece && ((turn === 'w' && isWhite(piece)) || (turn === 'b' && isBlack(piece)))) {
+        selected = [row, col];
+        const moves = getMoves(row, col);
+        renderBoard(board, moves, selected);
+      } else {
+        selected = null;
+        renderBoard(board);
+      }
+    }
+
+    // FEN 변환 함수
+    function boardToFEN(board, turn) {
+      let fen = '';
+      for (let row = 0; row < 8; row++) {
+        let empty = 0;
+        for (let col = 0; col < 8; col++) {
+          const piece = board[row][col];
+          if (!piece) {
+            empty++;
+          } else {
+            if (empty) { fen += empty; empty = 0; }
+            fen += piece;
+          }
+        }
+        if (empty) fen += empty;
+        if (row < 7) fen += '/';
+      }
+      fen += ` ${turn} - - 0 1`;
+      return fen;
+    }
+
+    // AI 서버 연결
+    const aiWs = new WebSocket('ws://localhost:8090');
+    aiWs.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'bestmove') {
+        applyAIMove(data.move);
+      }
+    };
+
+    // UCI 좌표를 board에 적용
+    function applyAIMove(move) {
+      const files = 'abcdefgh';
+      const fromCol = files.indexOf(move[0]);
+      const fromRow = 8 - parseInt(move[1]);
+      const toCol = files.indexOf(move[2]);
+      const toRow = 8 - parseInt(move[3]);
+      board[toRow][toCol] = board[fromRow][fromCol];
+      board[fromRow][fromCol] = '';
+      turn = turn === 'w' ? 'b' : 'w';
+      renderBoard(board);
+    }
+
+    document.getElementById('aiMoveBtn').onclick = () => {
+      const fen = boardToFEN(board, turn);
+      aiWs.send(JSON.stringify({ type: 'position', fen }));
+    };
+
+    renderBoard(board);
+  </script>
 </body>
 </html>

@@ -1,0 +1,31 @@
+{
+  "name": "chess-game-project",
+  "version": "1.0.0",
+  "description": "A chess game project with multiplayer and AI functionalities using Stockfish.",
+  "main": "src/app.ts",
+  "scripts": {
+    "start": "ts-node src/app.ts",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^4.0.0",
+    "stockfish": "^11.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.5.2",
+    "ts-node": "^10.0.0",
+    "jest": "^27.0.0",
+    "@types/jest": "^27.0.0",
+    "@types/node": "^16.0.0"
+  },
+  "keywords": [
+    "chess",
+    "multiplayer",
+    "AI",
+    "Stockfish"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

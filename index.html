@@ -18,10 +18,20 @@
     }
     .white { background: #f0d9b5; }
     .black { background: #b58863; }
+    #start-btn {
+      font-size: 2em;
+      padding: 20px 40px;
+      cursor: pointer;
+      border-radius: 10px;
+      border: 2px solid #333;
+      background: #fffbe6;
+      box-shadow: 2px 2px 8px #ccc;
+    }
   </style>
 </head>
 <body>
-  <div id="chessboard"></div>
+  <button id="start-btn">시작</button>
+  <div id="chessboard" style="display:none"></div>
   <script>
     const pieces = {
       'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
@@ -182,6 +192,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fen })
       });
+      res.setHeader('Access-Control-Allow-Origin', '*');
       const data = await res.json();
       const move = data.move;
       if (move && move.length >= 4) {
@@ -219,9 +230,14 @@
       }
     }
 
-    renderBoard();
-    // 게임 시작 시 흑이 AI면 AI가 둠
-    if (turn === 'black') setTimeout(aiMove, 500);
+    // 시작 버튼 클릭 시 체스판 표시
+    document.getElementById('start-btn').addEventListener('click', () => {
+      document.getElementById('start-btn').style.display = 'none';
+      document.getElementById('chessboard').style.display = 'grid';
+      renderBoard();
+      // 게임 시작 시 흑이 AI면 AI가 둠
+      if (turn === 'black') setTimeout(aiMove, 500);
+    });
   </script>
 </body>
 </html>

@@ -2,6 +2,17 @@ const http = require('http');
 const { spawn } = require('child_process');
 
 const server = http.createServer((req, res) => {
+  // CORS 허용
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   if (req.method === 'POST' && req.url === '/move') {
     let body = '';
     req.on('data', chunk => body += chunk);

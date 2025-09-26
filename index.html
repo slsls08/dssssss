@@ -30,6 +30,9 @@
   </style>
 </head>
 <body>
+  <div style="position:absolute;top:30px;left:0;right:0;text-align:center;font-size:1.2em;z-index:2;">
+    <span>AI(Stockfish)와 체스를 둘 수 있습니다. 흰색(사용자) vs 검은색(AI)</span>
+  </div>
   <button id="start-btn">시작</button>
   <div id="chessboard" style="display:none"></div>
   <script>
@@ -52,6 +55,21 @@
     let selected = null;
     let turn = 'white'; // white 또는 black
 
+let highlightMoves = [];
+
+// 선택된 기물의 이동 가능한 경로를 반환
+function getValidMoves(from) {
+  const moves = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      if (validMove(from, { row, col })) {
+        moves.push({ row, col });
+      }
+    }
+  }
+  return moves;
+}
+
     function isWhite(piece) {
       return piece && piece === piece.toUpperCase();
     }
@@ -73,6 +91,10 @@
           }
           if (selected && selected.row === row && selected.col === col) {
             cell.style.outline = '2px solid red';
+          }
+          // 이동 가능 경로 하이라이트
+          if (highlightMoves.some(m => m.row === row && m.col === col)) {
+            cell.style.background = '#aaf2a2';
           }
           cell.addEventListener('click', onCellClick);
           board.appendChild(cell);
@@ -192,7 +214,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fen })
       });
-      res.setHeader('Access-Control-Allow-Origin', '*');
       const data = await res.json();
       const move = data.move;
       if (move && move.length >= 4) {
@@ -216,16 +237,19 @@
           boardState[selected.row][selected.col] = '';
           turn = turn === 'white' ? 'black' : 'white';
           selected = null;
+          highlightMoves = [];
           renderBoard();
           if (turn === 'black') {
             setTimeout(aiMove, 500);
           }
         } else {
           selected = null;
+          highlightMoves = [];
           renderBoard();
         }
       } else if (piece && ((turn === 'white' && isWhite(piece)) || (turn === 'black' && isBlack(piece)))) {
         selected = { row, col };
+        highlightMoves = getValidMoves(selected);
         renderBoard();
       }
     }
